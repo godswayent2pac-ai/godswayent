@@ -14,7 +14,11 @@ import {
 } from 'recharts';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Download, Calendar, ArrowUpRight, ArrowDownRight } from 'lucide-react';
+import { Download, Calendar, ArrowUpRight, ArrowDownRight, FileText, Table as TableIcon } from 'lucide-react';
+import { jsPDF } from 'jspdf';
+import autoTable from 'jspdf-autotable';
+import Papa from 'papaparse';
+import { toast } from 'sonner';
 
 const REVENUE_DATA = [
   { month: 'Jan', revenue: 45000, costs: 22000 },
@@ -32,23 +36,147 @@ const CATEGORY_DISTRIBUTION = [
   { name: 'Suspension', value: 278 },
 ];
 
+const INVENTORY_SUMMARY = [
+  { item: 'Forged Pistons', stock: 12, sales_velocity: 'High', value: 14400 },
+  { item: 'Brake Pads', stock: 45, sales_velocity: 'Medium', value: 11250 },
+  { item: 'T60 Turbo', stock: 2, sales_velocity: 'Low', value: 8400 },
+  { item: 'LED Headlights', stock: 8, sales_velocity: 'Medium', value: 6800 },
+];
+
 const COLORS = ['#f97316', '#3b82f6', '#10b981', '#8b5cf6'];
 
 export default function Analytics() {
+  const exportToCSV = () => {
+    try {
+      const financialData = REVENUE_DATA.map(item => ({
+        Month: item.month,
+        Revenue: item.revenue,
+        Costs: item.costs,
+        Profit: item.revenue - item.costs,
+        'Profit Margin (%)': (((item.revenue - item.costs) / item.revenue) * 100).toFixed(2)
+      }));
+
+      const inventoryData = INVENTORY_SUMMARY.map(item => ({
+        'Product Name': item.item,
+        'Stock Level': item.stock,
+        'Sales Velocity': item.sales_velocity,
+        'Inventory Value (GHS)': item.value
+      }));
+
+      // Combine into one CSV with headers for sections
+      const csvContent = [
+        ['FINANCIAL DATA'],
+        ...Object.keys(financialData[0]).map(k => [k]), // This is just a placeholder, let's do it properly
+      ];
+
+      const financialCsv = Papa.unparse(financialData);
+      const inventoryCsv = Papa.unparse(inventoryData);
+      
+      const fullCsv = `FINANCIAL REPORTS\n${financialCsv}\n\nINVENTORY SUMMARY\n${inventoryCsv}`;
+      
+      const blob = new Blob([fullCsv], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.setAttribute('href', url);
+      link.setAttribute('download', `GodsWay_Analytics_Report_${new Date().toISOString().split('T')[0]}.csv`);
+      link.style.visibility = 'hidden';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+      toast.success('CSV Report exported successfully');
+    } catch (error) {
+      console.error('CSV Export Error:', error);
+      toast.error('Failed to export CSV report');
+    }
+  };
+
+  const exportToPDF = () => {
+    try {
+      const doc = new jsPDF();
+      
+      // Header
+      doc.setFontSize(22);
+      doc.setTextColor(79, 32, 13); // #4F200D
+      doc.text("GOD'S WAY ENT.", 105, 20, { align: 'center' });
+      
+      doc.setFontSize(14);
+      doc.setTextColor(125, 107, 93); // #7D6B5D
+      doc.text("BUSINESS INTELLIGENCE REPORT", 105, 30, { align: 'center' });
+      
+      doc.setFontSize(10);
+      doc.text(`Generated: ${new Date().toLocaleString()}`, 105, 38, { align: 'center' });
+      
+      // Financial Section
+      doc.setFontSize(14);
+      doc.setTextColor(255, 154, 0); // #FF9A00
+      doc.text("1. Financial Performance", 14, 50);
+      
+      autoTable(doc, {
+        startY: 55,
+        head: [['Month', 'Revenue (GHS)', 'Costs (GHS)', 'Profit (GHS)', 'Margin (%)']],
+        body: REVENUE_DATA.map(d => [
+          d.month, 
+          d.revenue.toLocaleString(), 
+          d.costs.toLocaleString(), 
+          (d.revenue - d.costs).toLocaleString(),
+          (((d.revenue - d.costs) / d.revenue) * 100).toFixed(1) + '%'
+        ]),
+        theme: 'striped',
+        headStyles: { fillColor: [79, 32, 13] },
+      });
+      
+      // Inventory Section
+      const finalY = (doc as any).lastAutoTable.finalY + 15;
+      doc.text("2. Inventory Summary", 14, finalY);
+      
+      autoTable(doc, {
+        startY: finalY + 5,
+        head: [['Item Name', 'Stock Level', 'Velocity', 'Value (GHS)']],
+        body: INVENTORY_SUMMARY.map(d => [
+          d.item, 
+          d.stock.toString(), 
+          d.sales_velocity, 
+          d.value.toLocaleString()
+        ]),
+        theme: 'grid',
+        headStyles: { fillColor: [255, 154, 0] },
+      });
+      
+      doc.save(`GodsWay_Analytics_Report_${new Date().toISOString().split('T')[0]}.pdf`);
+      toast.success('PDF Report exported successfully');
+    } catch (error) {
+      console.error('PDF Export Error:', error);
+      toast.error('Failed to export PDF report');
+    }
+  };
+
   return (
-    <div className="space-y-8 pb-12">
+    <div className="space-y-8 pb-12 transition-all duration-500">
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold tracking-tight text-foreground uppercase">Intelligence.</h1>
           <p className="text-muted-foreground text-sm mt-1">Deep dive into sales trends, inventory velocity, and financial health.</p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           <Button variant="outline" className="border-border bg-card rounded-xl h-10 px-4 text-xs font-bold uppercase tracking-widest text-muted-foreground transition-all">
             <Calendar className="w-4 h-4 mr-2" /> Jan 1, 2024 - Jun 30, 2024
           </Button>
-          <Button className="bg-foreground text-background hover:bg-foreground/90 rounded-xl h-10 px-6 font-bold text-xs uppercase tracking-widest shadow-lg transition-all">
-            <Download className="w-4 h-4 mr-2" /> Download Full PDF
-          </Button>
+          <div className="flex gap-2">
+            <Button 
+              onClick={exportToCSV}
+              variant="outline" 
+              className="border-border bg-card hover:bg-muted text-foreground rounded-xl h-10 px-4 font-bold text-xs uppercase tracking-widest shadow-sm transition-all"
+            >
+              <TableIcon className="w-4 h-4 mr-2 text-green-600" /> Export CSV
+            </Button>
+            <Button 
+              onClick={exportToPDF}
+              className="bg-primary text-primary-foreground hover:bg-primary/90 rounded-xl h-10 px-6 font-bold text-xs uppercase tracking-widest shadow-lg transition-all"
+            >
+              <FileText className="w-4 h-4 mr-2" /> Export PDF
+            </Button>
+          </div>
         </div>
       </div>
 
