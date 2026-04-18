@@ -545,10 +545,10 @@ export default function Inventory() {
                   <div className="relative inline-flex items-center justify-center">
                     <motion.span
                       animate={lastUpdatedId === item.id ? { 
-                        scale: [1, 1.2, 1],
-                        color: ["#ffffff", lastUpdatedId && updateDelta?.type === 'Damaged' ? "#ef4444" : "#22c55e", "#ffffff"] 
+                        scale: [1, 1.4, 1],
+                        color: ["#4F200D", updateDelta?.type === 'Damaged' ? "#ef4444" : "#22c55e", "#4F200D"] 
                       } : {}}
-                      transition={{ duration: 0.5 }}
+                      transition={{ duration: 0.8 }}
                     >
                       {item.stock}
                     </motion.span>

@@ -17,6 +17,12 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { Separator } from '@/components/ui/separator';
 
 const PREDEFINED_AVATARS = [
@@ -48,15 +54,29 @@ export default function Employees() {
   });
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const [editingEmployee, setEditingEmployee] = useState<any>(null);
+  const [showEditDialog, setShowEditDialog] = useState(false);
+
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>, isEdit = false) => {
     const file = e.target.files?.[0];
     if (file) {
       const reader = new FileReader();
       reader.onloadend = () => {
-        setNewEmployee({ ...newEmployee, img: reader.result as string });
+        if (isEdit) {
+          setEditingEmployee({ ...editingEmployee, img: reader.result as string });
+        } else {
+          setNewEmployee({ ...newEmployee, img: reader.result as string });
+        }
       };
       reader.readAsDataURL(file);
     }
+  };
+
+  const handleUpdateEmployee = (e: React.FormEvent) => {
+    e.preventDefault();
+    setEmployees(prev => prev.map(emp => emp.id === editingEmployee.id ? editingEmployee : emp));
+    setShowEditDialog(false);
+    setEditingEmployee(null);
   };
 
   const handleAddEmployee = (e: React.FormEvent) => {
@@ -71,6 +91,11 @@ export default function Employees() {
       warehouse: 'Accra Main',
       img: PREDEFINED_AVATARS[0]
     });
+  };
+
+  const openEditDialog = (employee: any) => {
+    setEditingEmployee({ ...employee });
+    setShowEditDialog(true);
   };
 
   const filtered = employees.filter(e => 
@@ -110,7 +135,7 @@ export default function Employees() {
                     >
                       <Camera className="w-6 h-6 text-white" />
                     </button>
-                    <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleImageUpload} />
+                    <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={(e) => handleImageUpload(e)} />
                   </div>
                   
                   <div className="flex-grow space-y-3">
@@ -193,6 +218,113 @@ export default function Employees() {
         </Dialog>
       </div>
 
+      {/* Edit Employee Dialog */}
+      <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
+        <DialogContent className="max-w-2xl bg-card border-border text-foreground rounded-[2rem] p-8 shadow-2xl overflow-y-auto max-h-[90vh]">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-bold uppercase tracking-tight italic font-serif">Update Personnel Clearance</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleUpdateEmployee} className="space-y-8 mt-6">
+            {editingEmployee && (
+              <>
+                <div className="space-y-4">
+                  <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Staff Visual Identity</label>
+                  <div className="flex flex-col md:flex-row items-center gap-8 bg-muted/30 p-6 rounded-3xl border border-border/50">
+                    <div className="relative group">
+                      <Avatar className="w-24 h-24 border-4 border-background shadow-xl">
+                        <AvatarImage src={editingEmployee.img} />
+                        <AvatarFallback>ST</AvatarFallback>
+                      </Avatar>
+                      <button 
+                        type="button"
+                        onClick={() => fileInputRef.current?.click()}
+                        className="absolute inset-0 bg-black/40 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                      >
+                        <Camera className="w-6 h-6 text-white" />
+                      </button>
+                      <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={(e) => handleImageUpload(e, true)} />
+                    </div>
+                    
+                    <div className="flex-grow space-y-3">
+                      <div className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground/60">Change Identifier Image</div>
+                      <div className="flex flex-wrap gap-2">
+                        {PREDEFINED_AVATARS.map((url, i) => (
+                          <button
+                            key={i}
+                            type="button"
+                            onClick={() => setEditingEmployee({...editingEmployee, img: url})}
+                            className={`w-10 h-10 rounded-xl overflow-hidden border-2 transition-all relative ${editingEmployee.img === url ? 'border-accent scale-110 shadow-lg' : 'border-transparent opacity-50 hover:opacity-100'}`}
+                          >
+                            <img src={url} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                            {editingEmployee.img === url && (
+                              <div className="absolute inset-0 bg-accent/20 flex items-center justify-center">
+                                <Check className="w-4 h-4 text-accent-foreground" />
+                              </div>
+                            )}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2 col-span-2 md:col-span-1">
+                    <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Full Identity Name</label>
+                    <Input 
+                      required
+                      value={editingEmployee.name}
+                      onChange={e => setEditingEmployee({...editingEmployee, name: e.target.value})}
+                      placeholder="e.g. Samuel Adjei" 
+                      className="bg-muted border-border rounded-xl h-12"
+                    />
+                  </div>
+                  <div className="space-y-2 col-span-2 md:col-span-1">
+                    <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Verified Email Node</label>
+                    <Input 
+                      required
+                      type="email"
+                      value={editingEmployee.email}
+                      onChange={e => setEditingEmployee({...editingEmployee, email: e.target.value})}
+                      className="bg-muted border-border rounded-xl h-12"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Personnel Role</label>
+                    <select 
+                      value={editingEmployee.role}
+                      onChange={e => setEditingEmployee({...editingEmployee, role: e.target.value})}
+                      className="w-full bg-muted border border-border rounded-xl h-12 px-4 text-[11px] font-bold uppercase tracking-widest outline-none transition-all focus:ring-2 focus:ring-accent/20"
+                    >
+                      <option value="SUPER_ADMIN">SUPER ADMIN</option>
+                      <option value="WAREHOUSE_MANAGER">WAREHOUSE MANAGER</option>
+                      <option value="EMPLOYEE">STAFF PERSONNEL</option>
+                    </select>
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Allocation Warehouse</label>
+                    <select 
+                      value={editingEmployee.warehouse}
+                      onChange={e => setEditingEmployee({...editingEmployee, warehouse: e.target.value})}
+                      className="w-full bg-muted border border-border rounded-xl h-12 px-4 text-[11px] font-bold uppercase tracking-widest outline-none transition-all focus:ring-2 focus:ring-accent/20"
+                    >
+                      <option value="All">Global Terminal (All)</option>
+                      <option value="Accra Main">Accra Main Node</option>
+                      <option value="Kumasi Branch">Kumasi Branch Node</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="flex gap-3 pt-4 border-t border-border mt-8">
+                  <Button type="button" variant="ghost" onClick={() => setShowEditDialog(false)} className="flex-grow rounded-xl h-12 font-bold uppercase text-[10px] tracking-widest transition-all">Cancel</Button>
+                  <Button type="submit" className="flex-grow bg-accent hover:bg-accent/80 text-accent-foreground rounded-xl h-12 font-bold uppercase text-[10px] tracking-widest shadow-xl transition-all">Update Credentials</Button>
+                </div>
+              </>
+            )}
+          </form>
+        </DialogContent>
+      </Dialog>
+
       <div className="bg-card p-6 rounded-3xl border border-border backdrop-blur-xl transition-all shadow-sm">
         <div className="relative">
           <Input
@@ -209,9 +341,22 @@ export default function Employees() {
         {filtered.map((employee) => (
           <div key={employee.id} className="bg-card border border-border rounded-[2.5rem] p-8 backdrop-blur-xl relative overflow-hidden group transition-all shadow-sm hover:shadow-md hover:border-accent/30">
             <div className="absolute top-0 right-0 p-4">
-              <Button variant="ghost" size="icon" className="hover:bg-muted rounded-full h-8 w-8 transition-all">
-                <MoreVertical className="w-4 h-4 text-muted-foreground" />
-              </Button>
+              <DropdownMenu>
+                <DropdownMenuTrigger render={<Button variant="ghost" size="icon" className="hover:bg-muted rounded-full h-8 w-8 transition-all" />}>
+                  <MoreVertical className="w-4 h-4 text-muted-foreground" />
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="bg-card border-border text-foreground transition-all">
+                  <DropdownMenuItem 
+                    onClick={() => openEditDialog(employee)}
+                    className="focus:bg-muted font-bold text-xs uppercase tracking-widest cursor-pointer"
+                  >
+                    Edit Profile
+                  </DropdownMenuItem>
+                  <DropdownMenuItem className="focus:bg-red-50 dark:focus:bg-red-950/30 focus:text-red-500 font-bold text-xs uppercase tracking-widest cursor-pointer">
+                    Terminate Access
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
 
             <div className="flex flex-col items-center text-center">
